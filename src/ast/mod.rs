@@ -1062,6 +1062,9 @@ pub enum Statement {
         // Specifies the actions to perform when values match or do not match.
         clauses: Vec<MergeClause>,
     },
+	Metadata {
+		text : String
+	},
 }
 
 impl fmt::Display for Statement {
@@ -1799,6 +1802,11 @@ impl fmt::Display for Statement {
                 write!(f, "ON {} ", on)?;
                 write!(f, "{}", display_separated(clauses, " "))
             }
+			Statement::Metadata {
+				text,
+			} => {
+                write!(f, "Metadata {}", text)
+			}
         }
     }
 }

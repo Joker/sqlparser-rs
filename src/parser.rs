@@ -128,12 +128,22 @@ impl<'a> Parser<'a> {
         let mut parser = Parser::new(tokens, dialect);
         let mut stmts = Vec::new();
         let mut expecting_statement_delimiter = false;
+        let mut next = true;
         debug!("Parsing sql '{}'...", sql);
         loop {
-            // ignore empty statements (between successive statement delimiters)
-            while parser.consume_token(&Token::SemiColon) {
-                expecting_statement_delimiter = false;
-            }
+			while next {
+				match parser.peek_token_or_meta() {
+					Token::Metadata(st) => {
+						stmts.push(Statement::Metadata{text:st});
+						parser.next_token_or_meta();
+					},
+					Token::SemiColon => {
+						expecting_statement_delimiter = false;
+						parser.next_token_or_meta();
+					},
+					_ => next = false
+				}
+			}
 
             if parser.peek_token() == Token::EOF {
                 break;
@@ -145,9 +155,50 @@ impl<'a> Parser<'a> {
             let statement = parser.parse_statement()?;
             stmts.push(statement);
             expecting_statement_delimiter = true;
+			next = true;
         }
         Ok(stmts)
     }
+
+	pub fn peek_token_or_meta(&mut self) -> Token {
+		let mut index = self.index;
+        loop {
+            index += 1;
+			match self.tokens.get(index - 1) {
+				Some(Token::Whitespace(sp)) => {
+					if let Whitespace::SingleLineComment { comment, .. } = sp {
+						let cm = comment.trim();
+						if cm.len() > 0 {
+							return Token::Metadata(cm.to_string())
+						}
+					}
+					continue;
+				}
+				token => return token.cloned().unwrap_or(Token::EOF),
+			}
+		}
+	}
+
+	pub fn next_token_or_meta(&mut self) -> Token {
+        loop {
+            self.index += 1;
+			match self.tokens.get(self.index - 1) {
+				Some(Token::Whitespace(sp)) => {
+					if let Whitespace::SingleLineComment { comment, .. } = sp {
+						let cm = comment.trim();
+						if cm.len() > 0 {
+							return Token::Metadata(cm.to_string())
+						}
+					}
+					continue;
+				}
+				token => return token.cloned().unwrap_or(Token::EOF),
+			}
+		}
+	}
+
+
+
 
     /// Parse a single top-level statement (such as SELECT, INSERT, CREATE, etc.),
     /// stopping before the statement separator, if any.

@@ -151,6 +151,8 @@ pub enum Token {
     HashArrow,
     /// #>> Extracts JSON sub-object at the specified path as text
     HashLongArrow,
+    /// -- Metadata comment
+    Metadata(String),
 }
 
 impl fmt::Display for Token {
@@ -212,6 +214,7 @@ impl fmt::Display for Token {
             Token::LongArrow => write!(f, "->>"),
             Token::HashArrow => write!(f, "#>"),
             Token::HashLongArrow => write!(f, "#>>"),
+            Token::Metadata(ref s) => write!(f, "-- {}", s),
         }
     }
 }
